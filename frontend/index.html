@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VoxShield | Voice Authenticity Detection</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+
+    <header class="navbar">
+
+        <div class="logo">
+            <span class="logo-icon">◉</span>
+            VoxShield
+        </div>
+
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#detect">Detect</a>
+            <a href="#how">How It Works</a>
+            <a href="#about">About</a>
+        </nav>
+
+        <div class="status">
+            <span class="status-dot"></span>
+            System Ready
+        </div>
+
+    </header>
+
+
+    <!-- Hero Section -->
+
+    <main>
+
+        <section id="home" class="hero">
+
+            <div class="hero-glow glow-one"></div>
+            <div class="hero-glow glow-two"></div>
+
+            <div class="hero-content">
+
+                <div class="security-badge">
+                    <span>🛡</span>
+                    AI VOICE SECURITY
+                </div>
+
+                <h1>
+                    Can You
+                    <span>Trust That Voice?</span>
+                </h1>
+
+                <p class="hero-description">
+                    VoxShield analyzes voice recordings for characteristics
+                    associated with AI-generated and cloned speech.
+                </p>
+
+                <div class="hero-buttons">
+
+                    <a href="#detect" class="primary-btn">
+                        Start Detection
+                        <span>→</span>
+                    </a>
+
+                    <a href="#how" class="secondary-btn">
+                        How It Works
+                    </a>
+
+                </div>
+
+                <div class="hero-stats">
+
+                    <div>
+                        <strong>141</strong>
+                        <span>Audio Features</span>
+                    </div>
+
+                    <div>
+                        <strong>ML</strong>
+                        <span>Detection Engine</span>
+                    </div>
+
+                    <div>
+                        <strong>2</strong>
+                        <span>Detection Modes</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Detection Section -->
+
+        <section id="detect" class="detect-section">
+
+            <div class="section-heading">
+
+                <p class="section-label">
+                    VOXSHIELD DETECTION
+                </p>
+
+                <h2>
+                    Analyze a Voice
+                </h2>
+
+                <p>
+                    Upload an existing recording or record a voice directly
+                    using your microphone.
+                </p>
+
+            </div>
+
+
+            <div class="detection-container">
+
+
+                <!-- Detection Options -->
+
+                <div class="mode-switch">
+
+                    <button id="uploadMode" class="mode-btn active">
+                        <span>📁</span>
+                        Upload Audio
+                    </button>
+
+                    <button id="recordMode" class="mode-btn">
+                        <span>🎙</span>
+                        Record Voice
+                    </button>
+
+                </div>
+
+
+                <!-- Upload Panel -->
+
+                <div id="uploadPanel" class="input-panel">
+
+                    <div class="big-icon">
+                        🎧
+                    </div>
+
+                    <h3>
+                        Upload a Voice Recording
+                    </h3>
+
+                    <p>
+                        WAV, MP3 or FLAC files supported
+                    </p>
+
+                    <input
+                        type="file"
+                        id="audioFile"
+                        accept=".wav,.mp3,.flac"
+                    >
+
+                    <label
+                        for="audioFile"
+                        class="choose-btn"
+                    >
+                        Choose Audio File
+                    </label>
+
+                    <p id="fileName" class="file-name">
+                        No file selected
+                    </p>
+
+                </div>
+
+
+                <!-- Recording Panel -->
+
+                <div
+                    id="recordPanel"
+                    class="input-panel"
+                    style="display:none;"
+                >
+
+                    <div class="record-icon" id="recordIcon">
+                        🎙
+                    </div>
+
+                    <h3>
+                        Record Your Voice
+                    </h3>
+
+                    <p>
+                        Speak clearly for a few seconds
+                    </p>
+
+                    <div id="timer">
+                        00:00
+                    </div>
+
+                    <div id="recordStatus">
+                        Ready to record
+                    </div>
+
+                    <button
+                        id="recordBtn"
+                        class="record-btn"
+                    >
+                        <span>●</span>
+                        Start Recording
+                    </button>
+
+                    <audio
+                        id="audioPreview"
+                        controls
+                        style="display:none;"
+                    ></audio>
+
+                </div>
+
+
+                <!-- Analyze Button -->
+
+                <button type="button" id="analyzeBtn" class="analyze-btn">
+                       Analyze Voice <span>→</span>
+               </button>
+
+<!-- Waveform -->
+
+<div
+    id="waveformContainer"
+    class="waveform-container"
+    style="display:none;"
+>
+
+    <div class="waveform-header">
+        <span>VOICE SIGNAL</span>
+        <span id="waveformStatus">Ready</span>
+    </div>
+
+    <canvas id="waveformCanvas"></canvas>
+
+</div>
+
+
+<!-- Loading -->
+
+<div
+    id="loading"
+    class="loading"
+    style="display:none;"
+>
+
+    <div class="scanner"></div>
+
+    <h3>
+        Analyzing Voice...
+    </h3>
+
+    <p>
+        Extracting audio characteristics
+    </p>
+
+</div>
+                
+
+                <!-- Result -->
+
+                <div
+                    id="resultCard"
+                    class="result-card"
+                    style="display:none;"
+                >
+
+                    <p class="result-label">
+                        VOXSHIELD ANALYSIS
+                    </p>
+
+                    <div id="resultIcon">
+                        🛡
+                    </div>
+
+                    <h2 id="prediction">
+                        Result
+                    </h2>
+
+                    <div class="confidence-box">
+
+                        <div>
+
+                            <span>
+                                Confidence
+                            </span>
+
+                            <strong id="confidence">
+                                0%
+                            </strong>
+
+                        </div>
+
+                        <div class="progress">
+                            <div
+                                id="confidenceBar"
+                                class="progress-fill"
+                            ></div>
+                        </div>
+
+                    </div>
+
+                    <div class="result-message">
+
+                        <p id="message">
+                            Analysis result will appear here.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="resetBtn"
+                        class="secondary-btn reset-btn"
+                    >
+                        Analyze Another Voice
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- How It Works -->
+
+        <section id="how" class="how-section">
+
+            <div class="section-heading">
+
+                <p class="section-label">
+                    HOW IT WORKS
+                </p>
+
+                <h2>
+                    From Voice to Verdict
+                </h2>
+
+            </div>
+
+
+            <div class="steps">
+
+                <div class="step">
+
+                    <div class="step-number">
+                        01
+                    </div>
+
+                    <h3>
+                        Capture
+                    </h3>
+
+                    <p>
+                        Upload an audio file or record a voice directly.
+                    </p>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        02
+                    </div>
+
+                    <h3>
+                        Extract
+                    </h3>
+
+                    <p>
+                        VoxShield extracts acoustic characteristics from
+                        the recording.
+                    </p>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        03
+                    </div>
+
+                    <h3>
+                        Analyze
+                    </h3>
+
+                    <p>
+                        The machine-learning model analyzes the extracted
+                        audio features.
+                    </p>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        04
+                    </div>
+
+                    <h3>
+                        Protect
+                    </h3>
+
+                    <p>
+                        Use the result as an additional signal when
+                        evaluating suspicious voice recordings.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- About -->
+
+        <section id="about" class="about-section">
+
+            <div class="about-card">
+
+                <div>
+
+                    <p class="section-label">
+                        ABOUT VOXSHIELD
+                    </p>
+
+                    <h2>
+                        Voice security for
+                        the age of synthetic media.
+                    </h2>
+
+                </div>
+
+                <p>
+                    Voice cloning can make synthetic speech sound remarkably
+                    similar to a real person. VoxShield provides an
+                    experimental machine-learning based analysis to help
+                    identify potentially generated or cloned audio.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- Footer -->
+
+    <footer>
+
+        <div class="footer-logo">
+            ◉ VoxShield
+        </div>
+
+        <p>
+            Voice Cloning Detection Prototype • 2026
+        </p>
+
+    </footer>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
