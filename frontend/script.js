@@ -1,5 +1,6 @@
 console.log("VoxShield script loaded.");
 
+
 // ==========================================
 // DOM ELEMENTS
 // ==========================================
@@ -63,104 +64,81 @@ let recordingSeconds = 0;
 // UPLOAD MODE
 // ==========================================
 
-uploadMode.addEventListener(
-    "click",
-    () => {
+uploadMode.addEventListener("click", () => {
 
-        currentMode = "upload";
+    currentMode = "upload";
 
-        uploadMode.classList.add("active");
-        recordMode.classList.remove("active");
+    uploadMode.classList.add("active");
+    recordMode.classList.remove("active");
 
-        uploadPanel.style.display = "block";
-        recordPanel.style.display = "none";
+    uploadPanel.style.display = "block";
+    recordPanel.style.display = "none";
 
-        stopRecordingIfNeeded();
-    }
-);
+    stopRecordingIfNeeded();
+});
 
 
 // ==========================================
 // RECORD MODE
 // ==========================================
 
-recordMode.addEventListener(
-    "click",
-    () => {
+recordMode.addEventListener("click", () => {
 
-        currentMode = "record";
+    currentMode = "record";
 
-        recordMode.classList.add("active");
-        uploadMode.classList.remove("active");
+    recordMode.classList.add("active");
+    uploadMode.classList.remove("active");
 
-        uploadPanel.style.display = "none";
-        recordPanel.style.display = "block";
-    }
-);
+    uploadPanel.style.display = "none";
+    recordPanel.style.display = "block";
+});
 
 
 // ==========================================
 // FILE SELECTION
 // ==========================================
 
-audioFile.addEventListener(
-    "change",
-    () => {
+audioFile.addEventListener("change", () => {
 
-        if (
-            audioFile.files &&
-            audioFile.files.length > 0
-        ) {
+    if (
+        audioFile.files &&
+        audioFile.files.length > 0
+    ) {
 
-            const file =
-                audioFile.files[0];
+        const file = audioFile.files[0];
 
-            fileName.textContent =
-                file.name;
+        fileName.textContent = file.name;
 
-            console.log(
-                "Selected file:",
-                file.name
-            );
+        console.log("Selected file:", file.name);
+        console.log("File type:", file.type);
+        console.log("File size:", file.size);
 
-            console.log(
-                "File type:",
-                file.type
-            );
+    } else {
 
-            console.log(
-                "File size:",
-                file.size
-            );
-
-        } else {
-
-            fileName.textContent =
-                "No file selected";
-        }
+        fileName.textContent =
+            "No file selected";
     }
-);
+});
 
 
 // ==========================================
-// RECORDING
+// RECORD BUTTON
 // ==========================================
 
-recordBtn.addEventListener(
-    "click",
-    async () => {
+recordBtn.addEventListener("click", async () => {
 
-        if (!mediaRecorder ||
-            mediaRecorder.state === "inactive") {
+    if (
+        !mediaRecorder ||
+        mediaRecorder.state === "inactive"
+    ) {
 
-            await startRecording();
+        await startRecording();
 
-        } else {
+    } else {
 
-            stopRecording();
-        }
+        stopRecording();
     }
-);
+});
 
 
 // ==========================================
@@ -171,9 +149,7 @@ async function startRecording() {
 
     try {
 
-        console.log(
-            "Requesting microphone..."
-        );
+        console.log("Requesting microphone...");
 
         recordingStream =
             await navigator.mediaDevices.getUserMedia({
@@ -190,8 +166,9 @@ async function startRecording() {
         recordedBlob = null;
         recordedFile = null;
 
+
         // ----------------------------------
-        // Select supported browser format
+        // SELECT RECORDING FORMAT
         // ----------------------------------
 
         let mimeType = "";
@@ -229,8 +206,9 @@ async function startRecording() {
             mimeType || "browser default"
         );
 
+
         // ----------------------------------
-        // Create recorder
+        // CREATE RECORDER
         // ----------------------------------
 
         if (mimeType) {
@@ -251,8 +229,9 @@ async function startRecording() {
                 );
         }
 
+
         // ----------------------------------
-        // Receive audio data
+        // AUDIO DATA
         // ----------------------------------
 
         mediaRecorder.ondataavailable =
@@ -269,100 +248,114 @@ async function startRecording() {
                 }
             };
 
+
         // ----------------------------------
-        // Recording finished
+        // RECORDING STOPPED
         // ----------------------------------
 
-        mediaRecorder.onstop =
-            () => {
+        mediaRecorder.onstop = () => {
 
-                const actualType =
-                    mediaRecorder.mimeType ||
-                    "audio/webm";
+            const actualType =
+                mediaRecorder.mimeType ||
+                "audio/webm";
 
-                recordedBlob =
-                    new Blob(
-                        audioChunks,
-                        {
-                            type: actualType
-                        }
-                    );
 
-                recordedFile =
-                    new File(
-                        [recordedBlob],
-                        "voxshield_recording.webm",
-                        {
-                            type: actualType
-                        }
-                    );
-
-                const audioURL =
-                    URL.createObjectURL(
-                        recordedBlob
-                    );
-
-                audioPreview.src =
-                    audioURL;
-
-                audioPreview.style.display =
-                    "block";
-
-                recordStatus.textContent =
-                    "Recording ready for analysis";
-
-                recordBtn.innerHTML =
-                    "<span>●</span> Start Recording";
-
-                recordIcon.textContent =
-                    "🎙";
-
-                stopTimer();
-
-                if (recordingStream) {
-
-                    recordingStream
-                        .getTracks()
-                        .forEach(
-                            track => track.stop()
-                        );
-
-                    recordingStream = null;
-                }
-
-                console.log(
-                    "Recording completed."
+            recordedBlob =
+                new Blob(
+                    audioChunks,
+                    {
+                        type: actualType
+                    }
                 );
 
-                console.log(
-                    "Recorded size:",
-                    recordedBlob.size
+
+            recordedFile =
+                new File(
+                    [recordedBlob],
+                    "voxshield_recording.webm",
+                    {
+                        type: actualType
+                    }
                 );
 
-                console.log(
-                    "Recorded type:",
-                    recordedBlob.type
+
+            const audioURL =
+                URL.createObjectURL(
+                    recordedBlob
                 );
-            };
+
+
+            audioPreview.src =
+                audioURL;
+
+            audioPreview.style.display =
+                "block";
+
+
+            recordStatus.textContent =
+                "Recording ready for analysis";
+
+
+            recordBtn.innerHTML =
+                "<span>●</span> Start Recording";
+
+
+            recordIcon.textContent =
+                "🎙";
+
+
+            stopTimer();
+
+
+            if (recordingStream) {
+
+                recordingStream
+                    .getTracks()
+                    .forEach(
+                        track => track.stop()
+                    );
+
+                recordingStream = null;
+            }
+
+
+            console.log(
+                "Recording completed."
+            );
+
+            console.log(
+                "Recorded size:",
+                recordedBlob.size
+            );
+
+            console.log(
+                "Recorded type:",
+                recordedBlob.type
+            );
+        };
+
 
         // ----------------------------------
-        // Start
+        // START RECORDING
         // ----------------------------------
 
-        mediaRecorder.start(
-            250
-        );
+        mediaRecorder.start(250);
+
 
         recordStatus.textContent =
             "Recording... Speak clearly";
 
+
         recordBtn.innerHTML =
             "<span>■</span> Stop Recording";
+
 
         recordIcon.textContent =
             "🔴";
 
+
         startTimer();
+
 
         console.log(
             "Recording started."
@@ -433,32 +426,31 @@ function startTimer() {
         recordingTimer
     );
 
+
     recordingTimer =
-        setInterval(
-            () => {
+        setInterval(() => {
 
-                recordingSeconds++;
+            recordingSeconds++;
 
-                const minutes =
-                    Math.floor(
-                        recordingSeconds / 60
-                    );
+            const minutes =
+                Math.floor(
+                    recordingSeconds / 60
+                );
 
-                const seconds =
-                    recordingSeconds % 60;
+            const seconds =
+                recordingSeconds % 60;
 
-                timer.textContent =
-                    String(minutes)
-                        .padStart(2, "0")
-                    +
-                    ":"
-                    +
-                    String(seconds)
-                        .padStart(2, "0");
 
-            },
-            1000
-        );
+            timer.textContent =
+                String(minutes)
+                    .padStart(2, "0")
+                +
+                ":"
+                +
+                String(seconds)
+                    .padStart(2, "0");
+
+        }, 1000);
 }
 
 
@@ -473,7 +465,7 @@ function stopTimer() {
 
 
 // ==========================================
-// ANALYZE
+// ANALYZE AUDIO
 // ==========================================
 
 analyzeBtn.addEventListener(
@@ -481,14 +473,24 @@ analyzeBtn.addEventListener(
     async () => {
 
         console.log(
+            "================================="
+        );
+
+        console.log(
             "ANALYZE STARTED"
         );
 
+        console.log(
+            "================================="
+        );
+
+
         let audioToAnalyze = null;
 
-        // ----------------------------------
-        // UPLOAD
-        // ----------------------------------
+
+        // ==================================
+        // UPLOAD MODE
+        // ==================================
 
         if (
             currentMode === "upload"
@@ -506,13 +508,15 @@ analyzeBtn.addEventListener(
                 return;
             }
 
+
             audioToAnalyze =
                 audioFile.files[0];
         }
 
-        // ----------------------------------
-        // RECORDING
-        // ----------------------------------
+
+        // ==================================
+        // RECORD MODE
+        // ==================================
 
         else {
 
@@ -525,6 +529,7 @@ analyzeBtn.addEventListener(
                 return;
             }
 
+
             audioToAnalyze =
                 recordedFile ||
                 new File(
@@ -536,6 +541,7 @@ analyzeBtn.addEventListener(
                     }
                 );
         }
+
 
         console.log(
             "Audio file:",
@@ -553,12 +559,13 @@ analyzeBtn.addEventListener(
         );
 
 
-        // ----------------------------------
+        // ==================================
         // FORM DATA
-        // ----------------------------------
+        // ==================================
 
         const formData =
             new FormData();
+
 
         formData.append(
             "audio",
@@ -566,9 +573,9 @@ analyzeBtn.addEventListener(
         );
 
 
-        // ----------------------------------
+        // ==================================
         // UI
-        // ----------------------------------
+        // ==================================
 
         analyzeBtn.disabled =
             true;
@@ -586,9 +593,10 @@ analyzeBtn.addEventListener(
                 "Sending audio to Flask..."
             );
 
-            // ----------------------------------
+
+            // ==================================
             // SEND TO BACKEND
-            // ----------------------------------
+            // ==================================
 
             const response =
                 await fetch(
@@ -599,163 +607,49 @@ analyzeBtn.addEventListener(
                     }
                 );
 
+
             console.log(
                 "HTTP Status:",
                 response.status
             );
 
+
+            // ==================================
+            // READ RESPONSE
+            // ==================================
+
             const data =
                 await response.json();
-                /* =========================================
-   AUDIO ANALYSIS DASHBOARD
-========================================= */
 
-const audio = data.audio;
-
-if (audio) {
-
-    /* =========================
-       MODEL CONFIDENCE
-    ========================= */
-
-    const confidence = Number(data.confidence) || 0;
-
-    document.getElementById("confidenceValue").textContent =
-        confidence.toFixed(2) + "%";
-
-    document.getElementById("confidenceBar").style.width =
-        Math.min(confidence, 100) + "%";
-
-
-    /* =========================
-       PITCH
-    ========================= */
-
-    const pitch = Number(audio.pitch_hz) || 0;
-    const pitchLevel = Number(audio.pitch_level) || 0;
-
-    document.getElementById("pitchValue").textContent =
-        pitch.toFixed(2) + " Hz";
-
-    document.getElementById("pitchLevel").textContent =
-        pitchLevel.toFixed(2) + "%";
-
-    document.getElementById("pitchBar").style.width =
-        Math.min(pitchLevel, 100) + "%";
-
-
-    /* =========================
-       FREQUENCY
-    ========================= */
-
-    const frequency = Number(audio.frequency_hz) || 0;
-    const frequencyLevel = Number(audio.frequency_level) || 0;
-
-    document.getElementById("frequencyValue").textContent =
-        frequency.toFixed(2) + " Hz";
-
-    document.getElementById("frequencyLevel").textContent =
-        frequencyLevel.toFixed(2) + "%";
-
-    document.getElementById("frequencyBar").style.width =
-        Math.min(frequencyLevel, 100) + "%";
-
-
-    /* =========================
-       SPECTRAL CENTROID
-    ========================= */
-
-    const centroid =
-        Number(audio.spectral_centroid_hz) || 0;
-
-    const centroidLevel =
-        Number(audio.centroid_level) || 0;
-
-    document.getElementById("centroidValue").textContent =
-        centroid.toFixed(2) + " Hz";
-
-    document.getElementById("centroidLevel").textContent =
-        centroidLevel.toFixed(2) + "%";
-
-    document.getElementById("centroidBar").style.width =
-        Math.min(centroidLevel, 100) + "%";
-
-
-    /* =========================
-       SPECTRAL BANDWIDTH
-    ========================= */
-
-    const bandwidth =
-        Number(audio.spectral_bandwidth_hz) || 0;
-
-    const bandwidthLevel =
-        Number(audio.bandwidth_level) || 0;
-
-    document.getElementById("bandwidthValue").textContent =
-        bandwidth.toFixed(2) + " Hz";
-
-    document.getElementById("bandwidthLevel").textContent =
-        bandwidthLevel.toFixed(2) + "%";
-
-    document.getElementById("bandwidthBar").style.width =
-        Math.min(bandwidthLevel, 100) + "%";
-
-
-    /* =========================
-       AUDIO ENERGY
-    ========================= */
-
-    const rms =
-        Number(audio.rms_energy) || 0;
-
-    const rmsLevel =
-        Number(audio.rms_level) || 0;
-
-    document.getElementById("rmsValue").textContent =
-        rms.toFixed(5);
-
-    document.getElementById("rmsLevel").textContent =
-        rmsLevel.toFixed(2) + "%";
-
-    document.getElementById("rmsBar").style.width =
-        Math.min(rmsLevel, 100) + "%";
-
-
-    /* =========================
-       DURATION
-    ========================= */
-
-    const duration =
-        Number(audio.duration_seconds) || 0;
-
-    document.getElementById("durationValue").textContent =
-        duration.toFixed(2) + " seconds";
-
-
-    /* =========================
-       SAMPLE RATE
-    ========================= */
-
-    document.getElementById("sampleRateValue").textContent =
-        audio.sample_rate + " Hz";
-
-
-    /* =========================
-       WAVEFORM
-    ========================= */
-
-    drawWaveform(audio.waveform);
-}
 
             console.log(
-                "Server response:",
+                "================================="
+            );
+
+            console.log(
+                "FULL SERVER RESPONSE:"
+            );
+
+            console.log(
                 data
             );
 
+            console.log(
+                "AUDIO DATA:"
+            );
 
-            // ----------------------------------
-            // ERROR
-            // ----------------------------------
+            console.log(
+                data.audio
+            );
+
+            console.log(
+                "================================="
+            );
+
+
+            // ==================================
+            // SERVER ERROR
+            // ==================================
 
             if (!response.ok) {
 
@@ -766,13 +660,14 @@ if (audio) {
             }
 
 
-            // ----------------------------------
-            // RESULT
-            // ----------------------------------
+            // ==================================
+            // PREDICTION
+            // ==================================
 
             const result =
                 data.prediction ||
                 "Unknown";
+
 
             const score =
                 Number(
@@ -783,9 +678,11 @@ if (audio) {
             prediction.textContent =
                 result;
 
+
             confidence.textContent =
                 score.toFixed(2) +
                 "%";
+
 
             confidenceBar.style.width =
                 Math.min(
@@ -798,9 +695,9 @@ if (audio) {
                 "%";
 
 
-            // ----------------------------------
+            // ==================================
             // RESULT MESSAGE
-            // ----------------------------------
+            // ==================================
 
             if (
                 result === "REAL"
@@ -824,11 +721,23 @@ if (audio) {
             }
 
 
+            // ==================================
+            // AUDIO DASHBOARD
+            // ==================================
+
+            updateAudioDashboard(data);
+
+
+            // ==================================
+            // SHOW RESULT
+            // ==================================
+
             loading.style.display =
                 "none";
 
             resultCard.style.display =
                 "block";
+
 
             console.log(
                 "Prediction:",
@@ -851,8 +760,10 @@ if (audio) {
                 error
             );
 
+
             loading.style.display =
                 "none";
+
 
             alert(
                 "Unable to analyze the audio.\n\n" +
@@ -869,6 +780,490 @@ if (audio) {
 
 
 // ==========================================
+// UPDATE AUDIO DASHBOARD
+// ==========================================
+
+function updateAudioDashboard(data) {
+
+    console.log(
+        "Updating audio dashboard..."
+    );
+
+
+    const audio =
+        data.audio;
+
+
+    // ======================================
+    // CHECK AUDIO DATA
+    // ======================================
+
+    if (!audio) {
+
+        console.warn(
+            "Backend did not return audio dashboard data."
+        );
+
+        return;
+    }
+
+
+    console.log(
+        "Dashboard audio data:",
+        audio
+    );
+
+
+    // ======================================
+    // CONFIDENCE
+    // ======================================
+
+    const modelConfidence =
+        Number(
+            data.confidence
+        ) || 0;
+
+
+    setText(
+        "confidenceValue",
+        modelConfidence.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "confidenceBar",
+        modelConfidence
+    );
+
+
+    // ======================================
+    // PITCH
+    // ======================================
+
+    const pitch =
+        Number(
+            audio.pitch_hz
+        ) || 0;
+
+
+    const pitchLevel =
+        Number(
+            audio.pitch_level
+        ) || 0;
+
+
+    setText(
+        "pitchValue",
+        pitch.toFixed(2) + " Hz"
+    );
+
+
+    setText(
+        "pitchLevel",
+        pitchLevel.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "pitchBar",
+        pitchLevel
+    );
+
+
+    // ======================================
+    // FREQUENCY
+    // ======================================
+
+    const frequency =
+        Number(
+            audio.frequency_hz
+        ) || 0;
+
+
+    const frequencyLevel =
+        Number(
+            audio.frequency_level
+        ) || 0;
+
+
+    setText(
+        "frequencyValue",
+        frequency.toFixed(2) + " Hz"
+    );
+
+
+    setText(
+        "frequencyLevel",
+        frequencyLevel.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "frequencyBar",
+        frequencyLevel
+    );
+
+
+    // ======================================
+    // SPECTRAL CENTROID
+    // ======================================
+
+    const centroid =
+        Number(
+            audio.spectral_centroid_hz
+        ) || 0;
+
+
+    const centroidLevel =
+        Number(
+            audio.centroid_level
+        ) || 0;
+
+
+    setText(
+        "centroidValue",
+        centroid.toFixed(2) + " Hz"
+    );
+
+
+    setText(
+        "centroidLevel",
+        centroidLevel.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "centroidBar",
+        centroidLevel
+    );
+
+
+    // ======================================
+    // SPECTRAL BANDWIDTH
+    // ======================================
+
+    const bandwidth =
+        Number(
+            audio.spectral_bandwidth_hz
+        ) || 0;
+
+
+    const bandwidthLevel =
+        Number(
+            audio.bandwidth_level
+        ) || 0;
+
+
+    setText(
+        "bandwidthValue",
+        bandwidth.toFixed(2) + " Hz"
+    );
+
+
+    setText(
+        "bandwidthLevel",
+        bandwidthLevel.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "bandwidthBar",
+        bandwidthLevel
+    );
+
+
+    // ======================================
+    // AUDIO ENERGY
+    // ======================================
+
+    const rms =
+        Number(
+            audio.rms_energy
+        ) || 0;
+
+
+    const rmsLevel =
+        Number(
+            audio.rms_level
+        ) || 0;
+
+
+    setText(
+        "rmsValue",
+        rms.toFixed(5)
+    );
+
+
+    setText(
+        "rmsLevel",
+        rmsLevel.toFixed(2) + "%"
+    );
+
+
+    setWidth(
+        "rmsBar",
+        rmsLevel
+    );
+
+
+    // ======================================
+    // DURATION
+    // ======================================
+
+    const duration =
+        Number(
+            audio.duration_seconds
+        ) || 0;
+
+
+    setText(
+        "durationValue",
+        duration.toFixed(2) +
+        " seconds"
+    );
+
+
+    // ======================================
+    // SAMPLE RATE
+    // ======================================
+
+    if (
+        audio.sample_rate !== undefined
+    ) {
+
+        setText(
+            "sampleRateValue",
+            audio.sample_rate +
+            " Hz"
+        );
+    }
+
+
+    // ======================================
+    // WAVEFORM
+    // ======================================
+
+    if (
+        audio.waveform &&
+        audio.waveform.length > 0
+    ) {
+
+        drawWaveform(
+            audio.waveform
+        );
+
+    } else {
+
+        console.warn(
+            "No waveform data received."
+        );
+    }
+
+
+    console.log(
+        "Audio dashboard updated successfully."
+    );
+}
+
+
+// ==========================================
+// SAFE TEXT UPDATE
+// ==========================================
+
+function setText(
+    elementId,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            elementId
+        );
+
+
+    if (!element) {
+
+        console.warn(
+            "Element not found:",
+            elementId
+        );
+
+        return;
+    }
+
+
+    element.textContent =
+        value;
+}
+
+
+// ==========================================
+// SAFE PROGRESS BAR UPDATE
+// ==========================================
+
+function setWidth(
+    elementId,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            elementId
+        );
+
+
+    if (!element) {
+
+        console.warn(
+            "Progress bar not found:",
+            elementId
+        );
+
+        return;
+    }
+
+
+    const safeValue =
+        Math.min(
+            100,
+            Math.max(
+                0,
+                Number(value) || 0
+            )
+        );
+
+
+    element.style.width =
+        safeValue + "%";
+}
+
+
+// ==========================================
+// DRAW WAVEFORM
+// ==========================================
+
+function drawWaveform(
+    waveform
+) {
+
+    const canvas =
+        document.getElementById(
+            "waveformCanvas"
+        );
+
+
+    if (
+        !canvas ||
+        !waveform ||
+        waveform.length === 0
+    ) {
+
+        console.warn(
+            "Waveform canvas or data missing."
+        );
+
+        return;
+    }
+
+
+    const ctx =
+        canvas.getContext("2d");
+
+
+    const width =
+        canvas.width;
+
+
+    const height =
+        canvas.height;
+
+
+    // Clear canvas
+
+    ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+
+
+    // ======================================
+    // CENTER LINE
+    // ======================================
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        0,
+        height / 2
+    );
+
+    ctx.lineTo(
+        width,
+        height / 2
+    );
+
+    ctx.stroke();
+
+
+    // ======================================
+    // WAVEFORM
+    // ======================================
+
+    ctx.beginPath();
+
+
+    const step =
+        width / waveform.length;
+
+
+    for (
+        let i = 0;
+        i < waveform.length;
+        i++
+    ) {
+
+        const x =
+            i * step;
+
+
+        const y =
+            (height / 2) -
+            (
+                waveform[i] *
+                (height / 2) *
+                0.9
+            );
+
+
+        if (i === 0) {
+
+            ctx.moveTo(
+                x,
+                y
+            );
+
+        } else {
+
+            ctx.lineTo(
+                x,
+                y
+            );
+        }
+    }
+
+
+    ctx.stroke();
+
+
+    console.log(
+        "Waveform displayed."
+    );
+}
+
+
+// ==========================================
 // RESET
 // ==========================================
 
@@ -879,39 +1274,189 @@ resetBtn.addEventListener(
         resultCard.style.display =
             "none";
 
+
         loading.style.display =
             "none";
 
-        audioFile.value = "";
+
+        audioFile.value =
+            "";
+
 
         fileName.textContent =
             "No file selected";
 
-        recordedBlob = null;
 
-        recordedFile = null;
+        recordedBlob =
+            null;
 
-        audioChunks = [];
 
-        audioPreview.src = "";
+        recordedFile =
+            null;
+
+
+        audioChunks =
+            [];
+
+
+        audioPreview.src =
+            "";
+
 
         audioPreview.style.display =
             "none";
 
+
         recordStatus.textContent =
             "Ready to record";
+
 
         timer.textContent =
             "00:00";
 
+
         prediction.textContent =
             "Result";
+
 
         confidence.textContent =
             "0%";
 
+
         confidenceBar.style.width =
             "0%";
+
+
+        // ==================================
+        // RESET DASHBOARD
+        // ==================================
+
+        setText(
+            "confidenceValue",
+            "0%"
+        );
+
+        setWidth(
+            "confidenceBar",
+            0
+        );
+
+
+        setText(
+            "pitchValue",
+            "0 Hz"
+        );
+
+        setText(
+            "pitchLevel",
+            "0%"
+        );
+
+        setWidth(
+            "pitchBar",
+            0
+        );
+
+
+        setText(
+            "frequencyValue",
+            "0 Hz"
+        );
+
+        setText(
+            "frequencyLevel",
+            "0%"
+        );
+
+        setWidth(
+            "frequencyBar",
+            0
+        );
+
+
+        setText(
+            "centroidValue",
+            "0 Hz"
+        );
+
+        setText(
+            "centroidLevel",
+            "0%"
+        );
+
+        setWidth(
+            "centroidBar",
+            0
+        );
+
+
+        setText(
+            "bandwidthValue",
+            "0 Hz"
+        );
+
+        setText(
+            "bandwidthLevel",
+            "0%"
+        );
+
+        setWidth(
+            "bandwidthBar",
+            0
+        );
+
+
+        setText(
+            "rmsValue",
+            "0"
+        );
+
+        setText(
+            "rmsLevel",
+            "0%"
+        );
+
+        setWidth(
+            "rmsBar",
+            0
+        );
+
+
+        setText(
+            "durationValue",
+            "0 seconds"
+        );
+
+
+        setText(
+            "sampleRateValue",
+            "0 Hz"
+        );
+
+
+        // ==================================
+        // CLEAR WAVEFORM
+        // ==================================
+
+        const canvas =
+            document.getElementById(
+                "waveformCanvas"
+            );
+
+
+        if (canvas) {
+
+            const ctx =
+                canvas.getContext("2d");
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+
 
         console.log(
             "Reset completed."
