@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import subprocess
+import uuid
 import numpy as np
 import pandas as pd
 import librosa
 import joblib
-
 
 # ===============================
 # FLASK SETUP
@@ -15,48 +15,75 @@ import joblib
 app = Flask(__name__)
 CORS(app)
 
-
 # ===============================
 # PROJECT PATHS
 # ===============================
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-MODEL_FILE = os.path.join(BASE_DIR, "backend", "model", "voice_detector.pkl")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "backend", "uploads")
+MODEL_FILE = os.path.join(
+    BASE_DIR,
+    "backend",
+    "model",
+    "voice_detector.pkl"
+)
+
+UPLOAD_FOLDER = os.path.join(
+    BASE_DIR,
+    "backend",
+    "uploads"
+)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ===============================
+# LOAD MODEL
+# ===============================
 
-# ===============================
-# LOAD ML MODEL
-# ===============================
+print("Loading VoxShield model...")
 
 model = joblib.load(MODEL_FILE)
 
+print("Model loaded successfully.")
 
 # ===============================
-# CONVERT AUDIO TO WAV
+# CONVERT AUDIO TO STANDARD WAV
 # ===============================
 
 def convert_to_wav(input_file, output_file):
 
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i",
-            input_file,
-            "-ar",
-            "16000",
-            "-ac",
-            "1",
-            output_file
-        ],
-        check=True,
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_file,
+
+        # Standard format used by the ML pipeline
+        "-ar",
+        "16000",
+
+        # Mono
+        "-ac",
+        "1",
+
+        # PCM WAV
+        "-c:a",
+        "pcm_s16le",
+
+        output_file
+    ]
+
+    result = subprocess.run(
+        command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        text=True
     )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Audio conversion failed: " + result.stderr[-1000:]
+        )
 
 
 # ===============================
@@ -67,10 +94,17 @@ def extract_features(file_path):
 
     audio, sample_rate = librosa.load(
         file_path,
-        sr=None
+        sr=16000,
+        mono=True
     )
 
-    # MFCC features
+    if len(audio) == 0:
+        raise ValueError("The audio file contains no usable audio.")
+
+    # -------------------------------
+    # MFCC
+    # -------------------------------
+
     mfcc = librosa.feature.mfcc(
         y=audio,
         sr=sample_rate,
@@ -82,7 +116,10 @@ def extract_features(file_path):
         axis=1
     )
 
-    # Mel Spectrogram features
+    # -------------------------------
+    # MEL SPECTROGRAM
+    # -------------------------------
+
     mel = librosa.feature.melspectrogram(
         y=audio,
         sr=sample_rate,
@@ -99,7 +136,10 @@ def extract_features(file_path):
         axis=1
     )
 
-    # Combine features
+    # -------------------------------
+    # COMBINE
+    # -------------------------------
+
     features = np.concatenate(
         [
             mfcc_mean,
@@ -121,6 +161,19 @@ def home():
 
 
 # ===============================
+# HEALTH CHECK
+# ===============================
+
+@app.route("/health")
+def health():
+
+    return jsonify({
+        "status": "healthy",
+        "model_loaded": model is not None
+    })
+
+
+# ===============================
 # PREDICTION
 # ===============================
 
@@ -130,47 +183,64 @@ def predict():
     if "audio" not in request.files:
 
         return jsonify({
-            "error": "No audio file uploaded"
+            "error": "No audio file uploaded."
         }), 400
-
 
     audio_file = request.files["audio"]
 
+    if not audio_file.filename:
+
+        return jsonify({
+            "error": "No audio filename received."
+        }), 400
 
     # -------------------------------
-    # File paths
+    # Unique filenames
     # -------------------------------
+
+    file_id = uuid.uuid4().hex
+
+    original_name = os.path.basename(
+        audio_file.filename
+    )
 
     original_path = os.path.join(
         UPLOAD_FOLDER,
-        audio_file.filename
+        f"{file_id}_{original_name}"
     )
 
     wav_path = os.path.join(
         UPLOAD_FOLDER,
-        "converted_audio.wav"
+        f"{file_id}_converted.wav"
     )
-
-
-    # -------------------------------
-    # Save uploaded audio
-    # -------------------------------
-
-    audio_file.save(
-        original_path
-    )
-
 
     try:
 
+        print("\n==============================")
+        print("NEW AUDIO REQUEST")
+        print("==============================")
+
         print(
             "FILE RECEIVED:",
-            audio_file.filename
+            original_name
         )
 
+        # -------------------------------
+        # Save original
+        # -------------------------------
+
+        audio_file.save(
+            original_path
+        )
+
+        print(
+            "FILE SAVED:",
+            original_path
+        )
 
         # -------------------------------
-        # Convert WebM/other audio to WAV
+        # Convert ANY supported audio
+        # to standard WAV
         # -------------------------------
 
         convert_to_wav(
@@ -182,7 +252,6 @@ def predict():
             "AUDIO CONVERSION COMPLETED"
         )
 
-
         # -------------------------------
         # Extract features
         # -------------------------------
@@ -192,30 +261,42 @@ def predict():
         )
 
         print(
-            "FEATURE EXTRACTION COMPLETED"
+            "FEATURE COUNT:",
+            len(features)
         )
 
+        # Expected:
+        # 13 MFCC + 128 MEL = 141
+
+        if len(features) != 141:
+
+            raise ValueError(
+                f"Expected 141 features, got {len(features)}"
+            )
 
         # -------------------------------
-        # Create feature dataframe
+        # Feature DataFrame
         # -------------------------------
 
-        feature_df = pd.DataFrame(
-            [features],
-            columns=[
-                f"mfcc_{i+1}"
+        columns = (
+            [
+                f"mfcc_{i + 1}"
                 for i in range(13)
             ]
             +
             [
-                f"mel_{i+1}"
+                f"mel_{i + 1}"
                 for i in range(128)
             ]
         )
 
+        feature_df = pd.DataFrame(
+            [features],
+            columns=columns
+        )
 
         # -------------------------------
-        # ML Prediction
+        # Prediction
         # -------------------------------
 
         prediction = model.predict(
@@ -226,17 +307,16 @@ def predict():
             feature_df
         )[0]
 
-
         # -------------------------------
         # Result
         # -------------------------------
 
-        if prediction == 0:
+        if int(prediction) == 0:
 
             result = "REAL"
 
             confidence = (
-                probabilities[0] * 100
+                float(probabilities[0]) * 100
             )
 
         else:
@@ -244,9 +324,8 @@ def predict():
             result = "AI-GENERATED / FAKE"
 
             confidence = (
-                probabilities[1] * 100
+                float(probabilities[1]) * 100
             )
-
 
         print(
             "PREDICTION:",
@@ -255,9 +334,10 @@ def predict():
 
         print(
             "CONFIDENCE:",
-            confidence
+            round(confidence, 2)
         )
 
+        print("==============================\n")
 
         return jsonify({
 
@@ -266,10 +346,15 @@ def predict():
             "confidence": round(
                 confidence,
                 2
-            )
+            ),
+
+            "features": 141,
+
+            "sample_rate": 16000,
+
+            "channels": 1
 
         })
-
 
     except Exception as e:
 
@@ -279,32 +364,36 @@ def predict():
         )
 
         return jsonify({
-
             "error": str(e)
-
         }), 500
-
 
     finally:
 
-        # Delete original uploaded file
+        # Delete uploaded file
+
         if os.path.exists(
             original_path
         ):
 
-            os.remove(
-                original_path
-            )
+            try:
+                os.remove(
+                    original_path
+                )
+            except:
+                pass
 
+        # Delete converted file
 
-        # Delete converted WAV
         if os.path.exists(
             wav_path
         ):
 
-            os.remove(
-                wav_path
-            )
+            try:
+                os.remove(
+                    wav_path
+                )
+            except:
+                pass
 
 
 # ===============================
