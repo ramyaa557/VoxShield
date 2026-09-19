@@ -1,17 +1,19 @@
-// ===============================
-// ELEMENTS
-// ===============================
+console.log("VoxShield script loaded.");
+
+// ==========================================
+// DOM ELEMENTS
+// ==========================================
 
 const audioFile = document.getElementById("audioFile");
 const fileName = document.getElementById("fileName");
-
-const analyzeBtn = document.getElementById("analyzeBtn");
 
 const uploadMode = document.getElementById("uploadMode");
 const recordMode = document.getElementById("recordMode");
 
 const uploadPanel = document.getElementById("uploadPanel");
 const recordPanel = document.getElementById("recordPanel");
+
+const analyzeBtn = document.getElementById("analyzeBtn");
 
 const recordBtn = document.getElementById("recordBtn");
 const recordIcon = document.getElementById("recordIcon");
@@ -21,72 +23,49 @@ const timer = document.getElementById("timer");
 const audioPreview = document.getElementById("audioPreview");
 
 const loading = document.getElementById("loading");
-const resultCard = document.getElementById("resultCard");
 
+const resultCard = document.getElementById("resultCard");
 const prediction = document.getElementById("prediction");
 const confidence = document.getElementById("confidence");
 const confidenceBar = document.getElementById("confidenceBar");
 const message = document.getElementById("message");
 
-const resultIcon = document.getElementById("resultIcon");
 const resetBtn = document.getElementById("resetBtn");
 
-const waveformContainer = document.getElementById("waveformContainer");
-const waveformStatus = document.getElementById("waveformStatus");
+
+// ==========================================
+// BACKEND URL
+// ==========================================
+
+const API_URL =
+    "https://voxshield-wbra.onrender.com/predict";
 
 
-// ===============================
-// CHECK REQUIRED ELEMENTS
-// ===============================
-
-console.log("VoxShield script loaded.");
-
-if (!loading) {
-    console.error("ERROR: #loading element not found in HTML.");
-}
-
-if (!analyzeBtn) {
-    console.error("ERROR: #analyzeBtn element not found in HTML.");
-}
-
-
-// ===============================
+// ==========================================
 // VARIABLES
-// ===============================
+// ==========================================
+
+let currentMode = "upload";
 
 let mediaRecorder = null;
 let audioChunks = [];
+
 let recordedBlob = null;
+let recordedFile = null;
+
+let recordingStream = null;
 
 let recordingTimer = null;
 let recordingSeconds = 0;
 
-let currentMode = "upload";
 
-
-// ===============================
-// INITIAL STATE
-// ===============================
-
-if (loading) {
-    loading.style.display = "none";
-}
-
-if (resultCard) {
-    resultCard.style.display = "none";
-}
-
-if (waveformContainer) {
-    waveformContainer.style.display = "none";
-}
-
-
-// ===============================
+// ==========================================
 // UPLOAD MODE
-// ===============================
+// ==========================================
 
-if (uploadMode) {
-    uploadMode.addEventListener("click", function () {
+uploadMode.addEventListener(
+    "click",
+    () => {
 
         currentMode = "upload";
 
@@ -96,16 +75,18 @@ if (uploadMode) {
         uploadPanel.style.display = "block";
         recordPanel.style.display = "none";
 
-    });
-}
+        stopRecordingIfNeeded();
+    }
+);
 
 
-// ===============================
+// ==========================================
 // RECORD MODE
-// ===============================
+// ==========================================
 
-if (recordMode) {
-    recordMode.addEventListener("click", function () {
+recordMode.addEventListener(
+    "click",
+    () => {
 
         currentMode = "record";
 
@@ -114,639 +95,826 @@ if (recordMode) {
 
         uploadPanel.style.display = "none";
         recordPanel.style.display = "block";
+    }
+);
 
-    });
-}
 
-
-// ===============================
+// ==========================================
 // FILE SELECTION
-// ===============================
+// ==========================================
 
-if (audioFile) {
+audioFile.addEventListener(
+    "change",
+    () => {
 
-    audioFile.addEventListener("change", function () {
+        if (
+            audioFile.files &&
+            audioFile.files.length > 0
+        ) {
 
-        if (audioFile.files.length > 0) {
+            const file =
+                audioFile.files[0];
 
-            const selectedFile = audioFile.files[0];
+            fileName.textContent =
+                file.name;
 
-            if (fileName) {
-                fileName.innerText = selectedFile.name;
-            }
+            console.log(
+                "Selected file:",
+                file.name
+            );
 
-            console.log("Selected file:", selectedFile.name);
+            console.log(
+                "File type:",
+                file.type
+            );
 
-            if (waveformContainer) {
-                waveformContainer.style.display = "block";
-
-                if (waveformStatus) {
-                    waveformStatus.innerText = "Audio selected";
-                }
-            }
+            console.log(
+                "File size:",
+                file.size
+            );
 
         } else {
 
-            if (fileName) {
-                fileName.innerText = "No file selected";
-            }
+            fileName.textContent =
+                "No file selected";
+        }
+    }
+);
 
-            if (waveformContainer) {
-                waveformContainer.style.display = "none";
-            }
 
+// ==========================================
+// RECORDING
+// ==========================================
+
+recordBtn.addEventListener(
+    "click",
+    async () => {
+
+        if (!mediaRecorder ||
+            mediaRecorder.state === "inactive") {
+
+            await startRecording();
+
+        } else {
+
+            stopRecording();
+        }
+    }
+);
+
+
+// ==========================================
+// START RECORDING
+// ==========================================
+
+async function startRecording() {
+
+    try {
+
+        console.log(
+            "Requesting microphone..."
+        );
+
+        recordingStream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: false
+                }
+            });
+
+        audioChunks = [];
+
+        recordedBlob = null;
+        recordedFile = null;
+
+        // ----------------------------------
+        // Select supported browser format
+        // ----------------------------------
+
+        let mimeType = "";
+
+        if (
+            MediaRecorder.isTypeSupported(
+                "audio/webm;codecs=opus"
+            )
+        ) {
+
+            mimeType =
+                "audio/webm;codecs=opus";
+
+        } else if (
+            MediaRecorder.isTypeSupported(
+                "audio/webm"
+            )
+        ) {
+
+            mimeType =
+                "audio/webm";
+
+        } else if (
+            MediaRecorder.isTypeSupported(
+                "audio/ogg"
+            )
+        ) {
+
+            mimeType =
+                "audio/ogg";
         }
 
-    });
+        console.log(
+            "Recording format:",
+            mimeType || "browser default"
+        );
 
-}
+        // ----------------------------------
+        // Create recorder
+        // ----------------------------------
 
+        if (mimeType) {
 
-// ===============================
-// RECORDING
-// ===============================
+            mediaRecorder =
+                new MediaRecorder(
+                    recordingStream,
+                    {
+                        mimeType: mimeType
+                    }
+                );
 
-if (recordBtn) {
+        } else {
 
-    recordBtn.addEventListener("click", async function () {
+            mediaRecorder =
+                new MediaRecorder(
+                    recordingStream
+                );
+        }
 
-        // START RECORDING
-        if (!mediaRecorder || mediaRecorder.state === "inactive") {
+        // ----------------------------------
+        // Receive audio data
+        // ----------------------------------
 
-            try {
+        mediaRecorder.ondataavailable =
+            (event) => {
 
-                const stream =
-                    await navigator.mediaDevices.getUserMedia({
-                        audio: true
-                    });
+                if (
+                    event.data &&
+                    event.data.size > 0
+                ) {
 
-                audioChunks = [];
+                    audioChunks.push(
+                        event.data
+                    );
+                }
+            };
 
-                mediaRecorder =
-                    new MediaRecorder(stream);
+        // ----------------------------------
+        // Recording finished
+        // ----------------------------------
 
-                mediaRecorder.ondataavailable =
-                    function (event) {
+        mediaRecorder.onstop =
+            () => {
 
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
+                const actualType =
+                    mediaRecorder.mimeType ||
+                    "audio/webm";
+
+                recordedBlob =
+                    new Blob(
+                        audioChunks,
+                        {
+                            type: actualType
                         }
+                    );
 
-                    };
-
-
-                mediaRecorder.onstop =
-                    function () {
-
-                        recordedBlob =
-                            new Blob(
-                                audioChunks,
-                                {
-                                    type: "audio/webm"
-                                }
-                            );
-
-                        const audioURL =
-                            URL.createObjectURL(
-                                recordedBlob
-                            );
-
-                        if (audioPreview) {
-                            audioPreview.src = audioURL;
-                            audioPreview.style.display = "block";
+                recordedFile =
+                    new File(
+                        [recordedBlob],
+                        "voxshield_recording.webm",
+                        {
+                            type: actualType
                         }
+                    );
 
-                        if (recordStatus) {
-                            recordStatus.innerText =
-                                "Recording ready for analysis";
-                        }
+                const audioURL =
+                    URL.createObjectURL(
+                        recordedBlob
+                    );
 
-                        if (recordIcon) {
-                            recordIcon.classList.remove(
-                                "recording"
-                            );
-                        }
+                audioPreview.src =
+                    audioURL;
 
-                        if (waveformContainer) {
-                            waveformContainer.style.display =
-                                "block";
+                audioPreview.style.display =
+                    "block";
 
-                            if (waveformStatus) {
-                                waveformStatus.innerText =
-                                    "Recording captured";
-                            }
-                        }
-
-                    };
-
-
-                mediaRecorder.start();
+                recordStatus.textContent =
+                    "Recording ready for analysis";
 
                 recordBtn.innerHTML =
-                    "<span>■</span> Stop Recording";
+                    "<span>●</span> Start Recording";
 
-                if (recordStatus) {
-                    recordStatus.innerText =
-                        "Recording... Speak clearly";
+                recordIcon.textContent =
+                    "🎙";
+
+                stopTimer();
+
+                if (recordingStream) {
+
+                    recordingStream
+                        .getTracks()
+                        .forEach(
+                            track => track.stop()
+                        );
+
+                    recordingStream = null;
                 }
 
-                if (recordIcon) {
-                    recordIcon.classList.add("recording");
-                }
-
-                startTimer();
-
-            }
-
-            catch (error) {
-
-                console.error(
-                    "Microphone error:",
-                    error
+                console.log(
+                    "Recording completed."
                 );
 
-                alert(
-                    "Microphone access is required to record your voice."
+                console.log(
+                    "Recorded size:",
+                    recordedBlob.size
                 );
 
-            }
-
-        }
-
-        // STOP RECORDING
-        else {
-
-            mediaRecorder.stop();
-
-            mediaRecorder.stream
-                .getTracks()
-                .forEach(
-                    track => track.stop()
+                console.log(
+                    "Recorded type:",
+                    recordedBlob.type
                 );
+            };
 
-            recordBtn.innerHTML =
-                "<span>●</span> Start Recording";
+        // ----------------------------------
+        // Start
+        // ----------------------------------
 
-            stopTimer();
+        mediaRecorder.start(
+            250
+        );
 
-        }
+        recordStatus.textContent =
+            "Recording... Speak clearly";
 
-    });
+        recordBtn.innerHTML =
+            "<span>■</span> Stop Recording";
 
+        recordIcon.textContent =
+            "🔴";
+
+        startTimer();
+
+        console.log(
+            "Recording started."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Microphone error:",
+            error
+        );
+
+        alert(
+            "Microphone access was not allowed. Please allow microphone permission and try again."
+        );
+    }
 }
 
 
-// ===============================
+// ==========================================
+// STOP RECORDING
+// ==========================================
+
+function stopRecording() {
+
+    if (
+        mediaRecorder &&
+        mediaRecorder.state !== "inactive"
+    ) {
+
+        mediaRecorder.stop();
+
+        console.log(
+            "Stopping recording..."
+        );
+    }
+}
+
+
+// ==========================================
+// STOP RECORDING IF NEEDED
+// ==========================================
+
+function stopRecordingIfNeeded() {
+
+    if (
+        mediaRecorder &&
+        mediaRecorder.state !== "inactive"
+    ) {
+
+        mediaRecorder.stop();
+    }
+}
+
+
+// ==========================================
 // TIMER
-// ===============================
+// ==========================================
 
 function startTimer() {
 
     recordingSeconds = 0;
 
-    if (timer) {
-        timer.innerText = "00:00";
-    }
+    timer.textContent =
+        "00:00";
+
+    clearInterval(
+        recordingTimer
+    );
 
     recordingTimer =
-        setInterval(function () {
+        setInterval(
+            () => {
 
-            recordingSeconds++;
+                recordingSeconds++;
 
-            const minutes =
-                Math.floor(
-                    recordingSeconds / 60
-                );
+                const minutes =
+                    Math.floor(
+                        recordingSeconds / 60
+                    );
 
-            const seconds =
-                recordingSeconds % 60;
+                const seconds =
+                    recordingSeconds % 60;
 
-            if (timer) {
+                timer.textContent =
+                    String(minutes)
+                        .padStart(2, "0")
+                    +
+                    ":"
+                    +
+                    String(seconds)
+                        .padStart(2, "0");
 
-                timer.innerText =
-                    String(minutes).padStart(2, "0")
-                    + ":" +
-                    String(seconds).padStart(2, "0");
-
-            }
-
-        }, 1000);
-
+            },
+            1000
+        );
 }
 
 
 function stopTimer() {
 
-    clearInterval(recordingTimer);
+    clearInterval(
+        recordingTimer
+    );
 
+    recordingTimer = null;
 }
 
 
-// ===============================
-// ANALYZE VOICE
-// ===============================
-
-if (analyzeBtn) {
-
-    analyzeBtn.addEventListener(
-        "click",
-        async function () {
-
-            console.log(
-                "========== ANALYZE STARTED =========="
-            );
-
-
-            let audioToAnalyze = null;
-
-
-            // -------------------------------
-            // UPLOAD MODE
-            // -------------------------------
-
-            if (currentMode === "upload") {
-
-                if (
-                    !audioFile ||
-                    audioFile.files.length === 0
-                ) {
-
-                    alert(
-                        "Please select an audio file first."
-                    );
-
-                    return;
-                }
-
-                audioToAnalyze =
-                    audioFile.files[0];
-
-            }
-
-
-            // -------------------------------
-            // RECORD MODE
-            // -------------------------------
-
-            else {
-
-                if (!recordedBlob) {
-
-                    alert(
-                        "Please record your voice first."
-                    );
-
-                    return;
-                }
-
-                audioToAnalyze =
-                    new File(
-                        [recordedBlob],
-                        "voxshield_recording.webm",
-                        {
-                            type: "audio/webm"
-                        }
-                    );
-
-            }
-
-
-            console.log(
-                "Audio:",
-                audioToAnalyze.name
-            );
-
-
-            // -------------------------------
-            // CREATE FORM DATA
-            // -------------------------------
-
-            const formData =
-                new FormData();
-
-            formData.append(
-                "audio",
-                audioToAnalyze
-            );
-
-
-            // -------------------------------
-            // SHOW LOADING
-            // -------------------------------
-
-            if (loading) {
-                loading.style.display = "flex";
-            }
-
-            if (resultCard) {
-                resultCard.style.display = "none";
-            }
-
-            analyzeBtn.disabled = true;
-
-
-            // -------------------------------
-            // SEND TO FLASK BACKEND
-            // -------------------------------
-
-            try {
-
-                console.log(
-                    "Sending audio to Flask..."
-                );
-
-
-                const response =
-                    await fetch(
-                        "https://voxshield-wbra.onrender.com/predict",
-                        {
-                            method: "POST",
-                            body: formData
-                        }
-                    );
-
-
-                console.log(
-                    "HTTP Status:",
-                    response.status
-                );
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        "Server responded with status "
-                        + response.status
-                    );
-
-                }
-
-
-                // -------------------------------
-                // READ SERVER RESPONSE
-                // -------------------------------
-
-                const data =
-                    await response.json();
-
-
-                console.log(
-                    "Server response:",
-                    data
-                );
-
-
-                // -------------------------------
-                // CHECK BACKEND ERROR
-                // -------------------------------
-
-                if (data.error) {
-
-                    throw new Error(
-                        data.error
-                    );
-
-                }
-
-
-                // -------------------------------
-                // GET RESULT
-                // -------------------------------
-
-                const result =
-                    data.prediction ??
-                    "Unknown";
-
-                const score =
-                    Number(
-                        data.confidence ?? 0
-                    );
-
-
-                console.log(
-                    "Prediction:",
-                    result
-                );
-
-                console.log(
-                    "Confidence:",
-                    score
-                );
-
-
-                // -------------------------------
-                // DISPLAY PREDICTION
-                // -------------------------------
-
-                if (prediction) {
-
-                    prediction.innerText =
-                        result;
-
-                }
-
-
-                // -------------------------------
-                // DISPLAY CONFIDENCE
-                // -------------------------------
-
-                if (confidence) {
-
-                    confidence.innerText =
-                        score.toFixed(2) + "%";
-
-                }
-
-
-                // -------------------------------
-                // CONFIDENCE BAR
-                // -------------------------------
-
-                if (confidenceBar) {
-
-                    confidenceBar.style.width =
-                        score + "%";
-
-                }
-
-
-                // -------------------------------
-                // RESULT MESSAGE
-                // -------------------------------
-
-                if (message) {
-
-                    if (result === "REAL") {
-
-                        message.innerText =
-                            "This voice appears to be genuine.";
-
-                    }
-
-                    else {
-
-                        message.innerText =
-                            "This voice may be AI-generated or cloned.";
-
-                    }
-
-                }
-
-
-                // -------------------------------
-                // RESULT ICON
-                // -------------------------------
-
-                if (resultIcon) {
-
-                    if (result === "REAL") {
-
-                        resultIcon.innerText = "🛡";
-
-                    }
-
-                    else {
-
-                        resultIcon.innerText = "⚠️";
-
-                    }
-
-                }
-
-
-                // -------------------------------
-                // SHOW RESULT CARD
-                // -------------------------------
-
-                if (resultCard) {
-
-                    resultCard.style.display =
-                        "block";
-
-                }
-
-
-                console.log(
-                    "========== RESULT DISPLAYED =========="
-                );
-
-            }
-
-
-            // -------------------------------
-            // ERROR HANDLING
-            // -------------------------------
-
-            catch (error) {
-
-                console.error(
-                    "ANALYZE ERROR:",
-                    error
-                );
+// ==========================================
+// ANALYZE
+// ==========================================
+
+analyzeBtn.addEventListener(
+    "click",
+    async () => {
+
+        console.log(
+            "ANALYZE STARTED"
+        );
+
+        let audioToAnalyze = null;
+
+        // ----------------------------------
+        // UPLOAD
+        // ----------------------------------
+
+        if (
+            currentMode === "upload"
+        ) {
+
+            if (
+                !audioFile.files ||
+                audioFile.files.length === 0
+            ) {
 
                 alert(
-                    "Something went wrong while analyzing the audio.\n\n"
-                    + error.message
+                    "Please select an audio file first."
                 );
 
+                return;
             }
 
-
-            // -------------------------------
-            // FINISH
-            // -------------------------------
-
-            finally {
-
-                if (loading) {
-                    loading.style.display = "none";
-                }
-
-                analyzeBtn.disabled = false;
-
-            }
-
+            audioToAnalyze =
+                audioFile.files[0];
         }
-    );
 
-}
+        // ----------------------------------
+        // RECORDING
+        // ----------------------------------
 
+        else {
 
-// ===============================
-// RESET BUTTON
-// ===============================
+            if (!recordedBlob) {
 
-if (resetBtn) {
+                alert(
+                    "Please record your voice first."
+                );
 
-    resetBtn.addEventListener(
-        "click",
-        function () {
-
-            // Clear uploaded file
-            if (audioFile) {
-                audioFile.value = "";
+                return;
             }
 
-            // Reset filename
-            if (fileName) {
-                fileName.innerText =
-                    "No file selected";
-            }
+            audioToAnalyze =
+                recordedFile ||
+                new File(
+                    [recordedBlob],
+                    "voxshield_recording.webm",
+                    {
+                        type:
+                            recordedBlob.type
+                    }
+                );
+        }
 
-            // Reset recording
-            recordedBlob = null;
-            audioChunks = [];
+        console.log(
+            "Audio file:",
+            audioToAnalyze.name
+        );
 
-            // Reset audio preview
-            if (audioPreview) {
+        console.log(
+            "Audio type:",
+            audioToAnalyze.type
+        );
 
-                audioPreview.pause();
-                audioPreview.src = "";
-                audioPreview.style.display = "none";
+        console.log(
+            "Audio size:",
+            audioToAnalyze.size
+        );
 
-            }
 
-            // Reset result
-            if (prediction) {
-                prediction.innerText = "Result";
-            }
+        // ----------------------------------
+        // FORM DATA
+        // ----------------------------------
 
-            if (confidence) {
-                confidence.innerText = "0%";
-            }
+        const formData =
+            new FormData();
 
-            if (confidenceBar) {
-                confidenceBar.style.width = "0%";
-            }
+        formData.append(
+            "audio",
+            audioToAnalyze
+        );
 
-            if (message) {
-                message.innerText =
-                    "Analysis result will appear here.";
-            }
 
-            if (resultIcon) {
-                resultIcon.innerText = "🛡";
-            }
+        // ----------------------------------
+        // UI
+        // ----------------------------------
 
-            // Hide result
-            if (resultCard) {
-                resultCard.style.display = "none";
-            }
+        analyzeBtn.disabled =
+            true;
 
-            // Hide waveform
-            if (waveformContainer) {
-                waveformContainer.style.display = "none";
-            }
+        resultCard.style.display =
+            "none";
 
-            if (waveformStatus) {
-                waveformStatus.innerText = "Ready";
-            }
+        loading.style.display =
+            "block";
+
+
+        try {
 
             console.log(
-                "VoxShield reset."
+                "Sending audio to Flask..."
             );
 
-        }
-    );
+            // ----------------------------------
+            // SEND TO BACKEND
+            // ----------------------------------
 
+            const response =
+                await fetch(
+                    API_URL,
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+            console.log(
+                "HTTP Status:",
+                response.status
+            );
+
+            const data =
+                await response.json();
+                /* =========================================
+   AUDIO ANALYSIS DASHBOARD
+========================================= */
+
+const audio = data.audio;
+
+if (audio) {
+
+    /* =========================
+       MODEL CONFIDENCE
+    ========================= */
+
+    const confidence = Number(data.confidence) || 0;
+
+    document.getElementById("confidenceValue").textContent =
+        confidence.toFixed(2) + "%";
+
+    document.getElementById("confidenceBar").style.width =
+        Math.min(confidence, 100) + "%";
+
+
+    /* =========================
+       PITCH
+    ========================= */
+
+    const pitch = Number(audio.pitch_hz) || 0;
+    const pitchLevel = Number(audio.pitch_level) || 0;
+
+    document.getElementById("pitchValue").textContent =
+        pitch.toFixed(2) + " Hz";
+
+    document.getElementById("pitchLevel").textContent =
+        pitchLevel.toFixed(2) + "%";
+
+    document.getElementById("pitchBar").style.width =
+        Math.min(pitchLevel, 100) + "%";
+
+
+    /* =========================
+       FREQUENCY
+    ========================= */
+
+    const frequency = Number(audio.frequency_hz) || 0;
+    const frequencyLevel = Number(audio.frequency_level) || 0;
+
+    document.getElementById("frequencyValue").textContent =
+        frequency.toFixed(2) + " Hz";
+
+    document.getElementById("frequencyLevel").textContent =
+        frequencyLevel.toFixed(2) + "%";
+
+    document.getElementById("frequencyBar").style.width =
+        Math.min(frequencyLevel, 100) + "%";
+
+
+    /* =========================
+       SPECTRAL CENTROID
+    ========================= */
+
+    const centroid =
+        Number(audio.spectral_centroid_hz) || 0;
+
+    const centroidLevel =
+        Number(audio.centroid_level) || 0;
+
+    document.getElementById("centroidValue").textContent =
+        centroid.toFixed(2) + " Hz";
+
+    document.getElementById("centroidLevel").textContent =
+        centroidLevel.toFixed(2) + "%";
+
+    document.getElementById("centroidBar").style.width =
+        Math.min(centroidLevel, 100) + "%";
+
+
+    /* =========================
+       SPECTRAL BANDWIDTH
+    ========================= */
+
+    const bandwidth =
+        Number(audio.spectral_bandwidth_hz) || 0;
+
+    const bandwidthLevel =
+        Number(audio.bandwidth_level) || 0;
+
+    document.getElementById("bandwidthValue").textContent =
+        bandwidth.toFixed(2) + " Hz";
+
+    document.getElementById("bandwidthLevel").textContent =
+        bandwidthLevel.toFixed(2) + "%";
+
+    document.getElementById("bandwidthBar").style.width =
+        Math.min(bandwidthLevel, 100) + "%";
+
+
+    /* =========================
+       AUDIO ENERGY
+    ========================= */
+
+    const rms =
+        Number(audio.rms_energy) || 0;
+
+    const rmsLevel =
+        Number(audio.rms_level) || 0;
+
+    document.getElementById("rmsValue").textContent =
+        rms.toFixed(5);
+
+    document.getElementById("rmsLevel").textContent =
+        rmsLevel.toFixed(2) + "%";
+
+    document.getElementById("rmsBar").style.width =
+        Math.min(rmsLevel, 100) + "%";
+
+
+    /* =========================
+       DURATION
+    ========================= */
+
+    const duration =
+        Number(audio.duration_seconds) || 0;
+
+    document.getElementById("durationValue").textContent =
+        duration.toFixed(2) + " seconds";
+
+
+    /* =========================
+       SAMPLE RATE
+    ========================= */
+
+    document.getElementById("sampleRateValue").textContent =
+        audio.sample_rate + " Hz";
+
+
+    /* =========================
+       WAVEFORM
+    ========================= */
+
+    drawWaveform(audio.waveform);
 }
+
+            console.log(
+                "Server response:",
+                data
+            );
+
+
+            // ----------------------------------
+            // ERROR
+            // ----------------------------------
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Server error"
+                );
+            }
+
+
+            // ----------------------------------
+            // RESULT
+            // ----------------------------------
+
+            const result =
+                data.prediction ||
+                "Unknown";
+
+            const score =
+                Number(
+                    data.confidence || 0
+                );
+
+
+            prediction.textContent =
+                result;
+
+            confidence.textContent =
+                score.toFixed(2) +
+                "%";
+
+            confidenceBar.style.width =
+                Math.min(
+                    100,
+                    Math.max(
+                        0,
+                        score
+                    )
+                ) +
+                "%";
+
+
+            // ----------------------------------
+            // RESULT MESSAGE
+            // ----------------------------------
+
+            if (
+                result === "REAL"
+            ) {
+
+                message.textContent =
+                    "This voice appears to be genuine according to the trained model.";
+
+                resultCard.classList.remove(
+                    "fake"
+                );
+
+            } else {
+
+                message.textContent =
+                    "This recording shows characteristics associated with AI-generated or cloned speech.";
+
+                resultCard.classList.add(
+                    "fake"
+                );
+            }
+
+
+            loading.style.display =
+                "none";
+
+            resultCard.style.display =
+                "block";
+
+            console.log(
+                "Prediction:",
+                result
+            );
+
+            console.log(
+                "Confidence:",
+                score
+            );
+
+            console.log(
+                "RESULT DISPLAYED"
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Analysis error:",
+                error
+            );
+
+            loading.style.display =
+                "none";
+
+            alert(
+                "Unable to analyze the audio.\n\n" +
+                error.message
+            );
+
+        } finally {
+
+            analyzeBtn.disabled =
+                false;
+        }
+    }
+);
+
+
+// ==========================================
+// RESET
+// ==========================================
+
+resetBtn.addEventListener(
+    "click",
+    () => {
+
+        resultCard.style.display =
+            "none";
+
+        loading.style.display =
+            "none";
+
+        audioFile.value = "";
+
+        fileName.textContent =
+            "No file selected";
+
+        recordedBlob = null;
+
+        recordedFile = null;
+
+        audioChunks = [];
+
+        audioPreview.src = "";
+
+        audioPreview.style.display =
+            "none";
+
+        recordStatus.textContent =
+            "Ready to record";
+
+        timer.textContent =
+            "00:00";
+
+        prediction.textContent =
+            "Result";
+
+        confidence.textContent =
+            "0%";
+
+        confidenceBar.style.width =
+            "0%";
+
+        console.log(
+            "Reset completed."
+        );
+    }
+);

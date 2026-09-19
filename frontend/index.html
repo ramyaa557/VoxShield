@@ -154,14 +154,17 @@
                     </h3>
 
                     <p>
-                        WAV, MP3 or FLAC files supported
+                        
+                     WAV, MP3, M4A, WebM, OGG and other audio files supported
                     </p>
+                    
 
-                    <input
-                        type="file"
-                        id="audioFile"
-                        accept=".wav,.mp3,.flac"
+                    <input 
+                       type="file" 
+                       id="audioFile"
+                       accept="audio/*"
                     >
+                
 
                     <label
                         for="audioFile"
@@ -475,6 +478,109 @@
 
 
     <script src="script.js"></script>
+    <section id="audioDashboard">
+
+    <h2>Audio Analysis</h2>
+
+    <div class="metrics-grid">
+
+        <!-- Confidence -->
+        <div class="metric-card">
+            <h3>Model Confidence</h3>
+            <div id="confidenceValue" class="metric-value">0%</div>
+
+            <div class="progress-container">
+                <div id="confidenceBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Pitch -->
+        <div class="metric-card">
+            <h3>Pitch</h3>
+            <div id="pitchValue" class="metric-value">0 Hz</div>
+            <p>Level: <span id="pitchLevel">0%</span></p>
+
+            <div class="progress-container">
+                <div id="pitchBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Frequency -->
+        <div class="metric-card">
+            <h3>Frequency</h3>
+            <div id="frequencyValue" class="metric-value">0 Hz</div>
+            <p>Level: <span id="frequencyLevel">0%</span></p>
+
+            <div class="progress-container">
+                <div id="frequencyBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Spectral Centroid -->
+        <div class="metric-card">
+            <h3>Spectral Centroid</h3>
+            <div id="centroidValue" class="metric-value">0 Hz</div>
+            <p>Level: <span id="centroidLevel">0%</span></p>
+
+            <div class="progress-container">
+                <div id="centroidBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Spectral Bandwidth -->
+        <div class="metric-card">
+            <h3>Spectral Bandwidth</h3>
+            <div id="bandwidthValue" class="metric-value">0 Hz</div>
+            <p>Level: <span id="bandwidthLevel">0%</span></p>
+
+            <div class="progress-container">
+                <div id="bandwidthBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Audio Energy -->
+        <div class="metric-card">
+            <h3>Audio Energy</h3>
+            <div id="rmsValue" class="metric-value">0</div>
+            <p>Level: <span id="rmsLevel">0%</span></p>
+
+            <div class="progress-container">
+                <div id="rmsBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- Duration -->
+        <div class="metric-card">
+            <h3>Audio Duration</h3>
+            <div id="durationValue" class="metric-value">
+                0 seconds
+            </div>
+        </div>
+
+        <!-- Sample Rate -->
+        <div class="metric-card">
+            <h3>Sample Rate</h3>
+            <div id="sampleRateValue" class="metric-value">
+                0 Hz
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Waveform -->
+    <div class="metric-card waveform-card">
+
+        <h3>Voice Waveform</h3>
+
+        <canvas
+            id="waveformCanvas"
+            width="900"
+            height="250">
+        </canvas>
+
+    </div>
+
+</section>
 
 </body>
 
