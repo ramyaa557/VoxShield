@@ -1,251 +1,68 @@
-import os
-import numpy as np
-import pandas as pd
+
 import librosa
+import numpy as np
 
 
-# ==========================================
-# FEATURE EXTRACTION
-# ==========================================
+def extract_dashboard_features(file_path):
+    # Load audio
+    y, sr = librosa.load(file_path, sr=16000)
 
-def extract_features(file_path):
+    # Duration
+    duration = librosa.get_duration(y=y, sr=sr)
 
-    try:
-        # Load audio
-        audio, sample_rate = librosa.load(
-            file_path,
-            sr=16000,
-            mono=True
-        )
+    # Pitch
+    pitch_values = librosa.yin(
+        y,
+        fmin=50,
+        fmax=500,
+        sr=sr
+    )
+    pitch_hz = float(np.mean(pitch_values))
 
-        # --------------------------------------
-        # MFCC FEATURES
-        # --------------------------------------
+    # Dominant frequency
+    fft_values = np.abs(np.fft.rfft(y))
+    frequencies = np.fft.rfftfreq(len(y), d=1 / sr)
+    dominant_frequency = float(
+        frequencies[np.argmax(fft_values)]
+    )
 
-        mfcc = librosa.feature.mfcc(
-            y=audio,
-            sr=sample_rate,
-            n_mfcc=13
-        )
+    # Spectral features
+    spectral_centroid = float(
+        np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
+    )
 
-        mfcc_mean = np.mean(
-            mfcc,
-            axis=1
-        )
+    spectral_bandwidth = float(
+        np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr))
+    )
 
-        # --------------------------------------
-        # MEL SPECTROGRAM
-        # --------------------------------------
+    # RMS energy
+    rms_energy = float(
+        np.mean(librosa.feature.rms(y=y))
+    )
 
-        mel = librosa.feature.melspectrogram(
-            y=audio,
-            sr=sample_rate,
-            n_mels=128
-        )
+    # Feature levels
+    pitch_level = min(pitch_hz / 540 * 100, 100)
+    frequency_level = min(dominant_frequency / 10000 * 100, 100)
+    centroid_level = min(spectral_centroid / 8000 * 100, 100)
+    bandwidth_level = min(spectral_bandwidth / 8000 * 100, 100)
+    rms_level = min(rms_energy * 1000, 100)
 
-        mel_db = librosa.power_to_db(
-            mel,
-            ref=np.max
-        )
+    # Waveform data for the frontend dashboard
+    waveform = y[::max(1, len(y) // 200)].tolist()
 
-        mel_mean = np.mean(
-            mel_db,
-            axis=1
-        )
-
-        # --------------------------------------
-        # COMBINE FEATURES
-        # --------------------------------------
-
-        features = np.concatenate([
-            mfcc_mean,
-            mel_mean
-        ])
-
-        return features
-
-    except Exception as e:
-
-        print("Feature extraction error:", e)
-
-        return None
-
-
-# ==========================================
-# EXTRACT DATASET FEATURES
-# ==========================================
-
-def process_dataset(dataset_path):
-
-    data = []
-
-    # --------------------------------------
-    # REAL = 0
-    # FAKE = 1
-    # --------------------------------------
-
-    categories = {
-        "real": 0,
-        "fake": 1
+    # Return data without printing detailed analysis
+    return {
+        "pitch_hz": round(pitch_hz, 2),
+        "frequency_hz": round(dominant_frequency, 2),
+        "spectral_centroid_hz": round(spectral_centroid, 2),
+        "spectral_bandwidth_hz": round(spectral_bandwidth, 2),
+        "rms_energy": round(rms_energy, 5),
+        "sample_rate": sr,
+        "duration_seconds": round(duration, 2),
+        "pitch_level": round(pitch_level, 2),
+        "frequency_level": round(frequency_level, 2),
+        "centroid_level": round(centroid_level, 2),
+        "bandwidth_level": round(bandwidth_level, 2),
+        "rms_level": round(rms_level, 2),
+        "waveform": waveform
     }
-
-    for category, label in categories.items():
-
-        folder = os.path.join(
-            dataset_path,
-            category
-        )
-
-        if not os.path.exists(folder):
-
-            print(
-                f"Folder not found: {folder}"
-            )
-
-            continue
-
-        print(
-            f"\nProcessing {category.upper()} audio..."
-        )
-
-        files = os.listdir(folder)
-
-        for filename in files:
-
-            if not filename.lower().endswith(
-                (".wav", ".mp3", ".flac", ".ogg")
-            ):
-                continue
-
-            file_path = os.path.join(
-                folder,
-                filename
-            )
-
-            features = extract_features(
-                file_path
-            )
-
-            if features is not None:
-
-                row = list(features)
-
-                row.append(label)
-
-                data.append(row)
-
-                print(
-                    "Processed:",
-                    filename
-                )
-
-    return data
-
-
-# ==========================================
-# MAIN
-# ==========================================
-
-if __name__ == "__main__":
-
-    PROJECT_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        )
-    )
-
-    DATASET_PATH = os.path.join(
-        PROJECT_PATH,
-        "dataset"
-    )
-
-    FEATURES_PATH = os.path.join(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        ),
-        "features"
-    )
-
-    os.makedirs(
-        FEATURES_PATH,
-        exist_ok=True
-    )
-
-    output_file = os.path.join(
-        FEATURES_PATH,
-        "audio_features.csv"
-    )
-
-    print("\n================================")
-    print("     VOXSHIELD FEATURE EXTRACTION")
-    print("================================\n")
-
-    dataset = process_dataset(
-        DATASET_PATH
-    )
-
-    if len(dataset) == 0:
-
-        print(
-            "\nNo audio files were found."
-        )
-
-        exit()
-
-    # --------------------------------------
-    # COLUMN NAMES
-    # --------------------------------------
-
-    columns = []
-
-    for i in range(13):
-
-        columns.append(
-            f"mfcc_{i + 1}"
-        )
-
-    for i in range(128):
-
-        columns.append(
-            f"mel_{i + 1}"
-        )
-
-    columns.append("label")
-
-    # --------------------------------------
-    # CREATE DATAFRAME
-    # --------------------------------------
-
-    dataframe = pd.DataFrame(
-        dataset,
-        columns=columns
-    )
-
-    # --------------------------------------
-    # SAVE CSV
-    # --------------------------------------
-
-    dataframe.to_csv(
-        output_file,
-        index=False
-    )
-
-    print("\n================================")
-    print("FEATURE EXTRACTION COMPLETED")
-    print("================================")
-
-    print(
-        "\nTotal samples:",
-        len(dataframe)
-    )
-
-    print(
-        "Features:",
-        len(columns) - 1
-    )
-
-    print(
-        "\nSaved to:"
-    )
-
-    print(output_file)
